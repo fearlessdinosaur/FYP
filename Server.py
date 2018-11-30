@@ -1,31 +1,49 @@
-import asyncio
+from curio import run,spawn,tcp_server
+import json
 class Server:
     
-    async def make_uplink(self,reader,writer):
-        print("connected")
-        writer.write(b"please enter username")
-        Uname = await Server.get_user(reader,writer,self)
-        #if Uname is not None:
-            #writer.write("welcome "+Uname)
-            #yield self.chat(reader,writer,Uname)
+    async def make_uplink(self,client,addr):
+        print("new connection from "+str(addr))
+        js = json.dumps({"code":0,"Message":"please Enter username"})
+        await client.send(js.encode())
+        while True:
+            Uname = await Server.assign_user(client,addr,self)
+            if Uname is not None:
+                js = json.dumps({"code":0,"Message":"welcome "+Uname+",you may now start chatting"})
+                await client.send(js.encode())
+                await Server.chat(client,addr,Uname,self)
+            else:
+               js = json.dumps({"code":0,"Message":"sorry username is taken"})
+               await client.send(js.encode()) 
+        
             
-    #async def chat(reader,writer,Uname):
-        #while True:
-            #data = (yield reader.read()).decode()
-            #print(data)
+    async def chat(client,addr,Uname,self):
+        while True:
+            data = await client.recv(1024)
+            print(data.decode())
+            js = json.loads(data.decode())
+            if( js["code"] == 1):
+                for c in self.clients:
+                    await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
             
-    async def get_user(reader,writer,self):
-        print("in this function now")
-        user = reader.read(1024).decode()
-        print(user)
-        return(user)
+            
+    async def assign_user(client,addr,self):
+        message = await client.recv(1024)
+        js = json.loads(message.decode())
+        username = js["Message"]
+        if(username not in self.clients):    
+            print(username)
+            self.clients[username] = client
+            return(username)
+
+    async def broadcast(client,addr,Uname,message):
+        js = json.dumps({"code":1,"Message":Uname + ":" + message})
+        await client.send(js.encode())
+        
     
     def __init__(self):
-        clients = {}
+        self.clients = {}
         port = 1661
-        self.loop = asyncio.get_event_loop()
-        self.serv = asyncio.start_server(self.make_uplink,'127.0.0.1',port,loop=self.loop)
-        self.server = self.loop.run_until_complete(self.serv)
-        self.loop.run_forever()
+        run(tcp_server,'',port,self.make_uplink)
         
 Server()

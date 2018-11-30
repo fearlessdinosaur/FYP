@@ -43,6 +43,7 @@ class messenger:
             message = json.dumps({"code":0,"Message":self.message.get()})
             s.send(message.encode())
             self.username = self.message.get()
+            self.message.delete(0,END)
         else:
             message = json.dumps({"code":1,"Message":self.message.get()})
             s.send(message.encode())
@@ -50,8 +51,9 @@ class messenger:
     def getmsg(s,self):
         while True:
             print("listening")
-            msg = s.recv(1024).decode()
-            print(msg)
-            self.display.insert(END,msg+"\n")
+            js = s.recv(1024)
+            msg = json.loads(js.decode())
+            print(msg["Message"])
+            self.display.insert(END,msg["Message"]+"\n")
 
 messenger()

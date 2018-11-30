@@ -1,7 +1,7 @@
 from curio import run,spawn,tcp_server
 import json
 class Server:
-    
+    # based off accept connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a
     async def make_uplink(self,client,addr):
         print("new connection from "+str(addr))
         js = json.dumps({"code":0,"Message":"please Enter username"})
@@ -16,7 +16,7 @@ class Server:
                js = json.dumps({"code":0,"Message":"sorry username is taken"})
                await client.send(js.encode()) 
         
-            
+    # based off accept handle connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a           
     async def chat(client,addr,Uname,self):
         while True:
             data = await client.recv(1024)
@@ -26,7 +26,7 @@ class Server:
                 for c in self.clients:
                     await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
             
-            
+    # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        
     async def assign_user(client,addr,self):
         message = await client.recv(1024)
         js = json.loads(message.decode())
@@ -35,7 +35,7 @@ class Server:
             print(username)
             self.clients[username] = client
             return(username)
-
+    
     async def broadcast(client,addr,Uname,message):
         js = json.dumps({"code":1,"Message":Uname + ":" + message})
         await client.send(js.encode())

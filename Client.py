@@ -6,14 +6,14 @@ import json
 class messenger:
 
     def __init__(self):
-        top = Tk()
+        self.top = Tk()
         host = '127.0.0.1'
         port = 1661
         
         start = time.time()
         print(start)
 
-        top.title("Private Chat")
+        self.top.title("Private Chat")
 
 
         self.username = ""
@@ -21,10 +21,10 @@ class messenger:
         self.s = sock.socket(sock.AF_INET,sock.SOCK_STREAM)
         self.s.connect((host,port))
         Thread(target=messenger.getmsg, args=(self.s,self)).start()
-        self.message = Entry(top,text="Please enter Message")
+        self.message = Entry(self.top,text="Please enter Message")
         self.message.grid(row=2,column=0,columnspan=5)
         
-        menu = Menu(top)
+        menu = Menu(self.top)
         self.GroupMenu = Menu(menu,tearoff=0)
         self.GroupMenu.add_command(label="current group:"+self.groupName)
         self.GroupMenu.add_command(label="Find Group")
@@ -44,32 +44,34 @@ class messenger:
         SettingMenu.add_command(label="placeholder3")
         menu.add_cascade(label="Settings",menu=SettingMenu)
         
-        self.send = Button(top,text="SEND",command=lambda:messenger.sendmsg(self.s,self))
+        self.send = Button(self.top,text="SEND",command=lambda:messenger.sendmsg(self.s,self))
         self.send.grid(row=2,column = 6)
 
-        self.display = Text(top,height=20,width=30)
+        self.display = Text(self.top,height=20,width=30)
         self.display.grid(row = 1, column = 0, columnspan = 5)
         self.display.tag_configure("System",foreground="dark blue")
-        self.scroll = Scrollbar(top)
+        self.scroll = Scrollbar(self.top)
         self.scroll.grid(row = 1,column = 6,rowspan=5)
         self.scroll.config(command=self.display.yview)
         self.display.config(yscrollcommand=self.scroll.set)
 
-        top.config(menu=menu)
+        self.top.config(menu=menu)
+        self.top.protocol("WM_DELETE_WINDOW",lambda:messenger.shutdown(self.s,self))
         self.send.mainloop()
         self.display.mainloop()
         self.scroll.mainloop()
         self.message.mainloop()
+        self.top.mainloop()
         
     def sendmsg(s,self):
         if(self.username == ""):
             message = json.dumps({"code":0,"Message":self.message.get()})
             s.send(message.encode())
             self.username = self.message.get()
-            self.message.delete(0,END)
         else:
             message = json.dumps({"code":1,"Message":self.message.get()})
             s.send(message.encode())
+        self.message.delete(0,END)
 
     def getmsg(s,self):
         while True:
@@ -102,6 +104,11 @@ class messenger:
     def SendGroup(name,self):
         message = json.dumps({"code":5,"Message":name})
         self.s.send(message.encode())
+
+    def shutdown(s,self):
+        message = json.dumps({"code":2,"Message":"shutdown request"})
+        s.send(message.encode())
+        self.top.destroy()
         
 
 messenger()

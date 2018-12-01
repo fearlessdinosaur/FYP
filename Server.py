@@ -27,6 +27,9 @@ class Server:
                     await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
             if(js["code"] == 5):
                 await Server.MkGroup(client,addr,Uname,js["Message"],self)
+            if(js["code"] == 2):
+                self.clients.pop(Uname)
+                print(self.clients)
                 
             
     # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        

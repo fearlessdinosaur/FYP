@@ -28,6 +28,7 @@ class messenger:
         GroupMenu = Menu(menu,tearoff=0)
         GroupMenu.add_command(label="current group:"+self.groupName)
         GroupMenu.add_command(label="Find Group")
+        GroupMenu.add_command(label="create Group",command = messenger.CreateGroup)
         GroupMenu.add_command(label="Leave Group")
         menu.add_cascade(label="group",menu=GroupMenu)
 
@@ -77,5 +78,17 @@ class messenger:
             msg = json.loads(js.decode())
             print(msg["Message"])
             self.display.insert(END,msg["Message"]+"\n")
+            
+    def CreateGroup():
+        pop = Tk()
+        name = Label(pop,text="Name")
+        name.grid(row = 0,column = 0)
+
+        name_enter = Entry(pop,text="Enter group name")
+        name_enter.grid(row=0,column=1,columnspan=3)
+        commit = Button(pop,text="Accept",command = pop.destroy)
+        commit.grid(row=1,column=0)
+        
+        mainloop()
 
 messenger()

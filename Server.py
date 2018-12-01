@@ -25,6 +25,8 @@ class Server:
             if( js["code"] == 1):
                 for c in self.clients:
                     await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
+            if(js["code"] == 5):
+                await Server.MkGroup(client,addr,Uname,js["Message"],self)
             
     # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        
     async def assign_user(client,addr,self):
@@ -40,9 +42,19 @@ class Server:
         js = json.dumps({"code":1,"Message":Uname + ":" + message})
         await client.send(js.encode())
         
-    
+    async def MkGroup(client,addr,Uname,group,self):
+        if group not in self.groups:
+            self.groups.append(group)
+            self.groupAssignment[Uname] = group
+            jsConf= json.dumps({"code":1,"Message":"group creation successful"})
+            jsAssign = json.dumps({"code":5,"Message":group})
+            await client.send(jsConf.encode())
+            await client.send(jsAssign.encode())
+            
     def __init__(self):
         self.clients = {}
+        self.groups = []
+        self.groupAssignment = {}
         port = 1661
         run(tcp_server,'',port,self.make_uplink)
         

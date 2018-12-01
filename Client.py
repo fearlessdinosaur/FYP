@@ -49,6 +49,7 @@ class messenger:
 
         self.display = Text(top,height=20,width=30)
         self.display.grid(row = 1, column = 0, columnspan = 5)
+        self.display.tag_configure("System",foreground="dark blue")
         self.scroll = Scrollbar(top)
         self.scroll.grid(row = 1,column = 6,rowspan=5)
         self.scroll.config(command=self.display.yview)
@@ -79,9 +80,12 @@ class messenger:
             if(msg["code"] == 5):
                 self.group = msg["Message"]
                 print("setting new group to"+msg["Message"])
-                self.GroupMenu.entryconfigure(1,label="Group:"+msg["Message"])
-            else:
+                self.GroupMenu.entryconfigure(0,label="Group:"+msg["Message"])
+            if(msg["code"] == 1):
                 self.display.insert(END,msg["Message"]+"\n")
+            if(msg["code"] == 7):
+                self.display.insert(END,msg["Message"]+"\n","System")
+            
             
     def CreateGroup(self):
         pop = Tk()

@@ -4,16 +4,16 @@ class Server:
     # based off accept connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a
     async def make_uplink(self,client,addr):
         print("new connection from "+str(addr))
-        js = json.dumps({"code":0,"Message":"please Enter username"})
+        js = json.dumps({"code":7,"Message":"please Enter username"})
         await client.send(js.encode())
         while True:
             Uname = await Server.assign_user(client,addr,self)
             if Uname is not None:
-                js = json.dumps({"code":0,"Message":"welcome "+Uname+",you may now start chatting"})
+                js = json.dumps({"code":7,"Message":"welcome "+Uname+",you may now start chatting"})
                 await client.send(js.encode())
                 await Server.chat(client,addr,Uname,self)
             else:
-               js = json.dumps({"code":0,"Message":"sorry username is taken"})
+               js = json.dumps({"code":7,"Message":"sorry username is taken"})
                await client.send(js.encode()) 
         
     # based off accept handle connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a           
@@ -27,6 +27,7 @@ class Server:
                     await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
             if(js["code"] == 5):
                 await Server.MkGroup(client,addr,Uname,js["Message"],self)
+                
             
     # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        
     async def assign_user(client,addr,self):

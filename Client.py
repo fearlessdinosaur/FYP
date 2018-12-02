@@ -7,6 +7,9 @@ class messenger:
 
     def __init__(self):
         self.top = Tk()
+        self.height = self.top.winfo_screenheight()
+        self.width = self.top.winfo_screenwidth()
+        self.top.geometry("725x375")
         host = '127.0.0.1'
         port = 1661
         
@@ -14,14 +17,17 @@ class messenger:
         print(start)
 
         self.top.title("Private Chat")
-
+        displayFrame = Frame(self.top)
+        inputFrame = Frame(self.top)
+        displayFrame.grid(row=0,column=0,columnspan = 3)
+        inputFrame.grid(row=1,column=1)
 
         self.username = ""
         self.groupName = "General"
         self.s = sock.socket(sock.AF_INET,sock.SOCK_STREAM)
         self.s.connect((host,port))
         Thread(target=messenger.getmsg, args=(self.s,self)).start()
-        self.message = Entry(self.top,text="Please enter Message")
+        self.message = Entry(inputFrame,text="Please enter Message",width=60)
         self.message.grid(row=2,column=0,columnspan=5)
         
         menu = Menu(self.top)
@@ -44,13 +50,13 @@ class messenger:
         SettingMenu.add_command(label="placeholder3")
         menu.add_cascade(label="Settings",menu=SettingMenu)
         
-        self.send = Button(self.top,text="SEND",command=lambda:messenger.sendmsg(self.s,self))
+        self.send = Button(inputFrame,text="SEND",command=lambda:messenger.sendmsg(self.s,self))
         self.send.grid(row=2,column = 6)
 
-        self.display = Text(self.top,height=20,width=30)
-        self.display.grid(row = 1, column = 0, columnspan = 5)
+        self.display = Text(displayFrame,height=20,width= 80)
+        self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5))
         self.display.tag_configure("System",foreground="dark blue")
-        self.scroll = Scrollbar(self.top)
+        self.scroll = Scrollbar(displayFrame)
         self.scroll.grid(row = 1,column = 6,rowspan=5)
         self.scroll.config(command=self.display.yview)
         self.display.config(yscrollcommand=self.scroll.set)

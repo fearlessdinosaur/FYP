@@ -31,6 +31,8 @@ class Server:
             if(js["code"] == 2):
                 self.clients.pop(Uname)
                 print(self.clients)
+            if(js["code"] == 7):
+                await self.listGroup(client,addr,Uname)
                 
             
     # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        
@@ -47,6 +49,10 @@ class Server:
     async def broadcast(client,addr,Uname,message):
         js = json.dumps({"code":1,"Message":Uname + ":" + message})
         await client.send(js.encode())
+
+    async def listGroup(self,client,addr,Uname):
+        js = json.dumps({"code":8,"Message":self.groups})
+        await client.send(js.encode())
         
     async def MkGroup(client,addr,Uname,group,self):
         if group not in self.groups:
@@ -59,7 +65,7 @@ class Server:
             
     def __init__(self):
         self.clients = {}
-        self.groups = []
+        self.groups = ["general"]
         self.groupAssignment = {}
         port = 1661
         run(tcp_server,'',port,self.make_uplink)

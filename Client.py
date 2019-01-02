@@ -33,7 +33,7 @@ class messenger:
         menu = Menu(self.top)
         self.GroupMenu = Menu(menu,tearoff=0)
         self.GroupMenu.add_command(label="current group:"+self.groupName)
-        self.GroupMenu.add_command(label="Find Group")
+        self.GroupMenu.add_command(label="Find Group" ,command = lambda:messenger.FindGroup(self))
         self.GroupMenu.add_command(label="create Group",command = lambda:messenger.CreateGroup(self))
         self.GroupMenu.add_command(label="Leave Group")
         menu.add_cascade(label="group",menu=self.GroupMenu)
@@ -93,6 +93,12 @@ class messenger:
                 self.display.insert(END,msg["Message"]+"\n")
             if(msg["code"] == 7):
                 self.display.insert(END,msg["Message"]+"\n","System")
+            if(msg["code"] == 8):
+                self.display.insert(END,"GROUPS" + "\n","System")
+                for x in msg["Message"]:
+                    print(x)
+                    self.display.insert(END,x + "\n","System")
+                    
             
             
     def CreateGroup(self):
@@ -106,6 +112,10 @@ class messenger:
         commit.grid(row=1,column=0)
         
         mainloop()
+
+    def FindGroup(self):
+        message = json.dumps({"code":7,"Message":"group request"})
+        self.s.send(message.encode())
 
     def SendGroup(name,self):
         message = json.dumps({"code":5,"Message":name})

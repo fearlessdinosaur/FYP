@@ -116,5 +116,5 @@ class messenger:
         s.send(message.encode())
         self.top.destroy()
         
-
-messenger()
+if __name__ == "__main__":
+    messenger()

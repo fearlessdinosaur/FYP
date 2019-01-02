@@ -24,7 +24,8 @@ class Server:
             js = json.loads(data.decode())
             if( js["code"] == 1):
                 for c in self.clients:
-                    await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
+                    if(self.groupAssignment[self.clients[c]] == self.groupAssignment[client]):
+                        await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
             if(js["code"] == 5):
                 await Server.MkGroup(client,addr,Uname,js["Message"],self)
             if(js["code"] == 2):
@@ -40,6 +41,7 @@ class Server:
         if(username not in self.clients):    
             print(username)
             self.clients[username] = client
+            self.groupAssignment[client] = "general"
             return(username)
     
     async def broadcast(client,addr,Uname,message):
@@ -49,7 +51,7 @@ class Server:
     async def MkGroup(client,addr,Uname,group,self):
         if group not in self.groups:
             self.groups.append(group)
-            self.groupAssignment[Uname] = group
+            self.groupAssignment[client] = group
             jsConf= json.dumps({"code":1,"Message":"group creation successful"})
             jsAssign = json.dumps({"code":5,"Message":group})
             await client.send(jsConf.encode())

@@ -33,6 +33,8 @@ class Server:
                 print(self.clients)
             if(js["code"] == 7):
                 await self.listGroup(client,addr,Uname)
+            if(js["code"] == 9):
+                await self.SetGroup(client,addr,uname,js["Message"])
                 
             
     # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        
@@ -61,6 +63,12 @@ class Server:
             jsConf= json.dumps({"code":1,"Message":"group creation successful"})
             jsAssign = json.dumps({"code":5,"Message":group})
             await client.send(jsConf.encode())
+            await client.send(jsAssign.encode())
+
+    async def SetGroup(client,addr,uname,group):
+        if group in self.groups:
+            self.groupAssignment[client] = group
+            jsAssign = json.dumps({"code":5,"Message":group})
             await client.send(jsAssign.encode())
             
     def __init__(self):

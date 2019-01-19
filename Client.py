@@ -12,6 +12,7 @@ class messenger:
         self.top.geometry("725x375")
         host = '127.0.0.1'
         port = 1661
+        self.groups = ["General"]
         
         start = time.time()
         print(start)
@@ -95,9 +96,7 @@ class messenger:
                 self.display.insert(END,msg["Message"]+"\n","System")
             if(msg["code"] == 8):
                 self.display.insert(END,"GROUPS" + "\n","System")
-                for x in msg["Message"]:
-                    print(x)
-                    self.display.insert(END,x + "\n","System")
+                self.groups = msg["Message"]
                     
             
             
@@ -108,15 +107,31 @@ class messenger:
 
         name_enter = Entry(pop,text="Enter group name")
         name_enter.grid(row=0,column=1,columnspan=3)
-        commit = Button(pop,text="Accept",command = lambda:messenger.SendGroup(name_enter.get(),self))
+        commit = Button(pop,text="Accept",command = lambda:[messenger.SendGroup(name_enter.get(),self),pop.destroy()])
         commit.grid(row=1,column=0)
-        
         mainloop()
 
     def FindGroup(self):
         message = json.dumps({"code":7,"Message":"group request"})
         self.s.send(message.encode())
+        pop = Tk()
+        group = Label(pop,text= "group")
+        group.grid(row=0,column = 0)
+        var = StringVar(pop)
+        var.set(self.groups[0])
+        print("populating dropdown:\n")
+        print(self.groups)
+        print("dropdown populated")
+        drop = OptionMenu(pop,var,*self.groups)
+        drop.grid(row=0,column=1)
 
+        pick = Button(pop,text="choose",command = lambda:[messenger.setGroup(var.get(),self),pop.destroy()])
+        pick.grid(row=1,column=0)
+
+
+    
+    def setGroup(group,self):
+        message = json.dumps({"code":9,"Message":group})
     def SendGroup(name,self):
         message = json.dumps({"code":5,"Message":name})
         self.s.send(message.encode())

@@ -13,7 +13,13 @@ class Server:
             if Uname is not None:
                 js = json.dumps({"code":7,"Message":"welcome "+Uname+",you may now start chatting"})
                 await client.send(js.encode())
-                js = json.dumps({"code":10,"Message":self.key.decode("utf-8")})
+                itemlist = []
+                for x in self.groupAssignment:
+                    if self.groupAssignment[x] == "general":
+                        for key,value in self.clients.items():
+                            if value == x:
+                                itemlist.append(key)
+                js = json.dumps({"code":11,"Message":itemlist})
                 await client.send(js.encode())
                 await Server.chat(client,addr,Uname,self)
             else:
@@ -39,6 +45,8 @@ class Server:
                 await self.listGroup(client,addr,Uname)
             if(js["code"] == 9):
                 await self.SetGroup(client,addr,Uname,js["Message"])
+            if(js["code"] == 11):
+                await self.SendMembers(client,addr,Uname,js["Message"])
                 
             
     # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        

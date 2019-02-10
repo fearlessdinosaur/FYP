@@ -76,11 +76,11 @@ class messenger:
         
     def sendmsg(s,self):
         if(self.username == ""):
-            message = json.dumps({"code":0,"Message":self.message.get(),"username"=self.username})
+            message = json.dumps({"code":0,"Message":self.message.get(),"username":self.username})
             s.send(message.encode())
             self.username = self.message.get()
         else:
-            message = json.dumps({"code":1,"Message":self.message.get(),"username"=self.username})
+            message = json.dumps({"code":1,"Message":self.message.get(),"username":self.username})
             s.send(message.encode())
         self.message.delete(0,END)
 
@@ -104,9 +104,12 @@ class messenger:
             if(msg["code"] == 10):
                 self.key = msg["Message"]
                 print(self.key)
+            if(msg["code"] == 11):
+                self.groupMems = msg["Message"]
+                print(self.groupMems)
                     
             
-            
+    # opens group creation window         
     def CreateGroup(self):
         pop = Tk()
         name = Label(pop,text="Name")
@@ -117,9 +120,9 @@ class messenger:
         commit = Button(pop,text="Accept",command = lambda:[messenger.SendGroup(name_enter.get(),self),pop.destroy()])
         commit.grid(row=1,column=0)
         mainloop()
-
+    # opens group selection window
     def FindGroup(self):
-        message = json.dumps({"code":7,"Message":"group request","username"=self.username})
+        message = json.dumps({"code":7,"Message":"group request","username":self.username})
         self.s.send(message.encode())
         pop = Tk()
         group = Label(pop,text= "group")
@@ -134,18 +137,18 @@ class messenger:
 
         pick = Button(pop,text="choose",command = lambda:[messenger.setGroup(var.get(),self),pop.destroy()])
         pick.grid(row=1,column=0)
-
+    #group join function
     def setGroup(group,self):
         print("joining new group")
-        message = json.dumps({"code":9,"Message":group,"username"=self.username})
+        message = json.dumps({"code":9,"Message":group,"username":self.username})
         self.s.send(message.encode())
-        
+    #group creation function
     def SendGroup(name,self):
-        message = json.dumps({"code":5,"Message":name,"username"=self.username})
+        message = json.dumps({"code":5,"Message":name,"username":self.username})
         self.s.send(message.encode())
-
+    # sends exit message to server, allowing for graceful shutdown
     def shutdown(s,self):
-        message = json.dumps({"code":2,"Message":"shutdown request","username"=self.username})
+        message = json.dumps({"code":2,"Message":"shutdown request","username":self.username})
         s.send(message.encode())
         self.top.destroy()
         

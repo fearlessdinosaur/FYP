@@ -80,8 +80,8 @@ class messenger:
             s.send(message.encode())
             self.username = self.message.get()
         else:
-            message = json.dumps({"code":1,"Message":self.message.get(),"username":self.username})
-            s.send(message.encode())
+            message =self.message.get()
+            self.broadcast(message)
         self.message.delete(0,END)
 
     def getmsg(s,self):
@@ -95,6 +95,7 @@ class messenger:
                 print("setting new group to"+msg["Message"])
                 self.GroupMenu.entryconfigure(0,label="Group:"+msg["Message"])
             if(msg["code"] == 1):
+                print(msg["Message"])
                 self.display.insert(END,msg["Message"]+"\n")
             if(msg["code"] == 7):
                 self.display.insert(END,msg["Message"]+"\n","System")
@@ -106,7 +107,9 @@ class messenger:
                 print(self.key)
             if(msg["code"] == 11):
                 self.groupMems = msg["Message"]
-                print(self.groupMems)
+                print("setting group member list")
+            if(msg["code"] == 12):
+                print("new member joined")
                     
             
     # opens group creation window         
@@ -146,6 +149,10 @@ class messenger:
     def SendGroup(name,self):
         message = json.dumps({"code":5,"Message":name,"username":self.username})
         self.s.send(message.encode())
+    def broadcast(self,msg):
+        for x in self.groupMems:
+            message = json.dumps({"code":1,"Message":msg,"sender":self.username,"reciever":x})
+            self.s.send(message.encode())
     # sends exit message to server, allowing for graceful shutdown
     def shutdown(s,self):
         message = json.dumps({"code":2,"Message":"shutdown request","username":self.username})

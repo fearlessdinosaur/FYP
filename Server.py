@@ -14,11 +14,15 @@ class Server:
                 js = json.dumps({"code":7,"Message":"welcome "+Uname+",you may now start chatting"})
                 await client.send(js.encode())
                 itemlist = []
+                #generates member list for user and sends username to each member
                 for x in self.groupAssignment:
                     if self.groupAssignment[x] == "general":
                         for key,value in self.clients.items():
                             if value == x:
                                 itemlist.append(key)
+                                userData = json.dumps({"code":12,"Message":key})
+                                #await x.send(userData.encode())
+                #sends list on to new user 
                 js = json.dumps({"code":11,"Message":itemlist})
                 await client.send(js.encode())
                 await Server.chat(client,addr,Uname,self)
@@ -30,12 +34,11 @@ class Server:
     async def chat(client,addr,Uname,self):
         while True:
             data = await client.recv(1024)
-            print(data.decode())
             js = json.loads(data.decode())
+            print(js)
             if( js["code"] == 1):
-                for c in self.clients:
-                    if(self.groupAssignment[self.clients[c]] == self.groupAssignment[client]):
-                        await Server.broadcast(self.clients[c],addr,Uname,js["Message"])
+                        print("Message:"+js["Message"])
+                        await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],self)
             if(js["code"] == 5):
                 await Server.MkGroup(client,addr,Uname,js["Message"],self)
             if(js["code"] == 2):
@@ -60,8 +63,9 @@ class Server:
             self.groupAssignment[client] = "general"
             return(username)
     
-    async def broadcast(client,addr,Uname,message):
+    async def broadcast(client,addr,Uname,message,self):
         js = json.dumps({"code":1,"Message":Uname + ":" + message})
+        print(client)
         await client.send(js.encode())
 
     async def listGroup(self,client,addr,Uname):

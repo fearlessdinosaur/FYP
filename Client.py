@@ -2,9 +2,14 @@ import socket as sock
 from threading import Thread
 from tkinter import *
 import time
-import json
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
+import simplejson as json
+
+import Crypto
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto import Random
+
+import base64
 
 class messenger:
 
@@ -16,7 +21,11 @@ class messenger:
         host = '127.0.0.1'
         port = 1661
         self.groups = ["General"]
-        
+        rand = Random.new().read
+        self.key = RSA.generate(2048,rand)
+        self.pub = self.key.publickey()
+        print(self.pub.exportKey())
+        print(self.pub)
         
         start = time.time()
         print(start)
@@ -79,6 +88,8 @@ class messenger:
             message = json.dumps({"code":0,"Message":self.message.get(),"username":self.username})
             s.send(message.encode())
             self.username = self.message.get()
+            key = self.pub.exportKey(format = "PEM",passphrase=None,pkcs=1)
+            s.send(key)
         else:
             message =self.message.get()
             self.broadcast(message)
@@ -96,7 +107,11 @@ class messenger:
                 self.GroupMenu.entryconfigure(0,label="Group:"+msg["Message"])
             if(msg["code"] == 1):
                 print(msg["Message"])
-                self.display.insert(END,msg["Message"]+"\n")
+                decr = PKCS1_OAEP.new(self.key)
+                message = base64.b64decode(msg["Message"])
+                print(message)
+                message = decr.decrypt(message)
+                self.display.insert(END,message+"\n")
             if(msg["code"] == 7):
                 self.display.insert(END,msg["Message"]+"\n","System")
             if(msg["code"] == 8):
@@ -107,9 +122,12 @@ class messenger:
                 print(self.key)
             if(msg["code"] == 11):
                 self.groupMems = msg["Message"]
+                for x in self.groupMems:
+                    self.groupMems[x] = RSA.importKey(self.groupMems[x],passphrase=None)
                 print("setting group member list")
             if(msg["code"] == 12):
                 print("new member joined")
+                self.groupMems[msg["user"]] = msg["Message"]
                     
             
     # opens group creation window         
@@ -151,7 +169,11 @@ class messenger:
         self.s.send(message.encode())
     def broadcast(self,msg):
         for x in self.groupMems:
-            message = json.dumps({"code":1,"Message":msg,"sender":self.username,"reciever":x})
+            encryptor = PKCS1_OAEP.new(self.groupMems[x])
+            print(self.groupMems[x].exportKey())
+            cipher = encryptor.encrypt(msg.encode())
+            message = json.dumps({"code":1,"Message":base64.b64encode(cipher),"sender":self.username,"reciever":x})
+            print("message creation worked fine")
             self.s.send(message.encode())
     # sends exit message to server, allowing for graceful shutdown
     def shutdown(s,self):

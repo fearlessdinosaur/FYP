@@ -1,7 +1,9 @@
 from curio import run,spawn,tcp_server
-import json
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
+import simplejson as json
+import Crypto
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto import Random
 class Server:
     # based off accept connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a
     async def make_uplink(self,client,addr):
@@ -11,17 +13,21 @@ class Server:
         while True:
             Uname = await Server.assign_user(client,addr,self)
             if Uname is not None:
+                await Server.get_Key(client,Uname,addr,self)
                 js = json.dumps({"code":7,"Message":"welcome "+Uname+",you may now start chatting"})
                 await client.send(js.encode())
-                itemlist = []
+                itemlist = {}
                 #generates member list for user and sends username to each member
                 for x in self.groupAssignment:
+                    print(x)
                     if self.groupAssignment[x] == "general":
                         for key,value in self.clients.items():
                             if value == x:
-                                itemlist.append(key)
-                                userData = json.dumps({"code":12,"Message":key})
-                                #await x.send(userData.encode())
+                                if key != Uname:
+                                    userData = json.dumps({"code":12,"Message":self.KeyTab[key].exportKey(format = "PEM",passphrase=None,pkcs=1),"user":key})
+                                    print(userData)
+                                    await x.send(userData.encode())
+                                itemlist[key] = self.KeyTab[key].exportKey(format = "PEM",passphrase=None,pkcs=1)
                 #sends list on to new user 
                 js = json.dumps({"code":11,"Message":itemlist})
                 await client.send(js.encode())
@@ -62,7 +68,11 @@ class Server:
             self.clients[username] = client
             self.groupAssignment[client] = "general"
             return(username)
-    
+        
+    async def get_Key(client,Uname,addr,self):
+        key= await client.recv(1024)
+        self.KeyTab[Uname] = RSA.importKey(key,passphrase=None)
+        
     async def broadcast(client,addr,Uname,message,self):
         js = json.dumps({"code":1,"Message":Uname + ":" + message})
         print(client)
@@ -88,11 +98,10 @@ class Server:
             await client.send(jsAssign.encode())
             
     def __init__(self):
-        self.key = get_random_bytes(16)
-        print(self.key)
         self.clients = {}
         self.groups = ["general"]
         self.groupAssignment = {}
+        self.KeyTab = {}
         port = 1661
         run(tcp_server,'',port,self.make_uplink)
         

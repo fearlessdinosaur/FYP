@@ -43,6 +43,15 @@ class messenger:
         Thread(target=messenger.getmsg, args=(self.s,self)).start()
         self.message = Entry(inputFrame,text="Please enter Message",width=60)
         self.message.grid(row=2,column=0,columnspan=5)
+
+        self.display = Text(displayFrame,height=20,width= 80)
+        self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5))
+        self.display.tag_configure("System",foreground="dark blue")
+        self.scroll = Scrollbar(displayFrame)
+        self.scroll.grid(row = 1,column = 6,rowspan=5)
+        self.scroll.config(command=self.display.yview)
+        self.display.config(yscrollcommand=self.scroll.set)
+
         
         menu = Menu(self.top)
         self.GroupMenu = Menu(menu,tearoff=0)
@@ -67,14 +76,6 @@ class messenger:
         self.send = Button(inputFrame,text="SEND",command=lambda:messenger.sendmsg(self.s,self))
         self.send.grid(row=2,column = 6)
 
-        self.display = Text(displayFrame,height=20,width= 80)
-        self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5))
-        self.display.tag_configure("System",foreground="dark blue")
-        self.scroll = Scrollbar(displayFrame)
-        self.scroll.grid(row = 1,column = 6,rowspan=5)
-        self.scroll.config(command=self.display.yview)
-        self.display.config(yscrollcommand=self.scroll.set)
-
         self.top.config(menu=menu)
         self.top.protocol("WM_DELETE_WINDOW",lambda:messenger.shutdown(self.s,self))
         self.send.mainloop()
@@ -98,20 +99,17 @@ class messenger:
     def getmsg(s,self):
         while True:
             print("listening")
-            js = s.recv(1024)
+            js = s.recv(3000)
             msg = json.loads(js.decode())
-            print(msg["Message"])
             if(msg["code"] == 5):
                 self.group = msg["Message"]
                 print("setting new group to"+msg["Message"])
                 self.GroupMenu.entryconfigure(0,label="Group:"+msg["Message"])
             if(msg["code"] == 1):
-                print(msg["Message"])
                 decr = PKCS1_OAEP.new(self.key)
                 message = base64.b64decode(msg["Message"])
-                print(message)
                 message = decr.decrypt(message)
-                self.display.insert(END,message+"\n")
+                self.display.insert(END,msg["sender"]+":"+message.decode()+"\n")
             if(msg["code"] == 7):
                 self.display.insert(END,msg["Message"]+"\n","System")
             if(msg["code"] == 8):
@@ -127,8 +125,9 @@ class messenger:
                 print("setting group member list")
             if(msg["code"] == 12):
                 print("new member joined")
-                self.groupMems[msg["user"]] = msg["Message"]
-                    
+                print(msg["user"])
+                self.groupMems[msg["user"]] = RSA.importKey(msg["Message"],passphrase=None)
+                print(self.groupMems)    
             
     # opens group creation window         
     def CreateGroup(self):
@@ -169,11 +168,10 @@ class messenger:
         self.s.send(message.encode())
     def broadcast(self,msg):
         for x in self.groupMems:
+            print("sending to:"+x)
             encryptor = PKCS1_OAEP.new(self.groupMems[x])
-            print(self.groupMems[x].exportKey())
             cipher = encryptor.encrypt(msg.encode())
             message = json.dumps({"code":1,"Message":base64.b64encode(cipher),"sender":self.username,"reciever":x})
-            print("message creation worked fine")
             self.s.send(message.encode())
     # sends exit message to server, allowing for graceful shutdown
     def shutdown(s,self):

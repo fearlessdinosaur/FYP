@@ -24,7 +24,7 @@ class Server:
                         for key,value in self.clients.items():
                             if value == x:
                                 if key != Uname:
-                                    userData = json.dumps({"code":12,"Message":self.KeyTab[key].exportKey(format = "PEM",passphrase=None,pkcs=1),"user":key})
+                                    userData = json.dumps({"code":12,"Message":self.KeyTab[Uname].exportKey(format = "PEM",passphrase=None,pkcs=1),"user":Uname})
                                     print(userData)
                                     await x.send(userData.encode())
                                 itemlist[key] = self.KeyTab[key].exportKey(format = "PEM",passphrase=None,pkcs=1)
@@ -44,7 +44,7 @@ class Server:
             print(js)
             if( js["code"] == 1):
                         print("Message:"+js["Message"])
-                        await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],self)
+                        await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],js["reciever"],self)
             if(js["code"] == 5):
                 await Server.MkGroup(client,addr,Uname,js["Message"],self)
             if(js["code"] == 2):
@@ -73,8 +73,8 @@ class Server:
         key= await client.recv(1024)
         self.KeyTab[Uname] = RSA.importKey(key,passphrase=None)
         
-    async def broadcast(client,addr,Uname,message,self):
-        js = json.dumps({"code":1,"Message":Uname + ":" + message})
+    async def broadcast(client,addr,Uname,message,reciever,self):
+        js = json.dumps({"code":1,"Message":message,"sender":Uname,"reciever":reciever})
         print(client)
         await client.send(js.encode())
 
@@ -104,5 +104,6 @@ class Server:
         self.KeyTab = {}
         port = 1661
         run(tcp_server,'',port,self.make_uplink)
-        
-Server()
+
+if __name__ == "__main__":
+    Server()

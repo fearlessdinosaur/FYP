@@ -18,31 +18,19 @@ class messenger:
         self.height = self.top.winfo_screenheight()
         self.width = self.top.winfo_screenwidth()
         self.top.geometry("725x375")
+        self.count =0
         host = '127.0.0.1'
         port = 1661
         self.groups = ["General"]
         rand = Random.new().read
         self.key = RSA.generate(2048,rand)
         self.pub = self.key.publickey()
-        print(self.pub.exportKey())
-        print(self.pub)
         
-        start = time.time()
-        print(start)
-
         self.top.title("Private Chat")
         displayFrame = Frame(self.top)
         inputFrame = Frame(self.top)
         displayFrame.grid(row=0,column=0,columnspan = 3)
         inputFrame.grid(row=1,column=1)
-
-        self.username = ""
-        self.groupName = "General"
-        self.s = sock.socket(sock.AF_INET,sock.SOCK_STREAM)
-        self.s.connect((host,port))
-        Thread(target=messenger.getmsg, args=(self.s,self)).start()
-        self.message = Entry(inputFrame,text="Please enter Message",width=60)
-        self.message.grid(row=2,column=0,columnspan=5)
 
         self.display = Text(displayFrame,height=20,width= 80)
         self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5))
@@ -52,6 +40,16 @@ class messenger:
         self.scroll.config(command=self.display.yview)
         self.display.config(yscrollcommand=self.scroll.set)
 
+        
+        self.username = ""
+        self.groupName = "General"
+        self.messages = {}
+        self.s = sock.socket(sock.AF_INET,sock.SOCK_STREAM)
+        self.s.connect((host,port))
+        Thread(target=messenger.getmsg, args=(self.s,self)).start()
+        Thread(target=messenger.timer, args =(self,)).start()
+        self.message = Entry(inputFrame,text="Please enter Message",width=60)
+        self.message.grid(row=2,column=0,columnspan=5)
         
         menu = Menu(self.top)
         self.GroupMenu = Menu(menu,tearoff=0)
@@ -89,6 +87,7 @@ class messenger:
             message = json.dumps({"code":0,"Message":self.message.get(),"username":self.username})
             s.send(message.encode())
             self.username = self.message.get()
+            print(self.username)
             key = self.pub.exportKey(format = "PEM",passphrase=None,pkcs=1)
             s.send(key)
         else:
@@ -98,6 +97,7 @@ class messenger:
 
     def getmsg(s,self):
         while True:
+            counter = 0
             print("listening")
             js = s.recv(3000)
             msg = json.loads(js.decode())
@@ -110,6 +110,8 @@ class messenger:
                 message = base64.b64decode(msg["Message"])
                 message = decr.decrypt(message)
                 self.display.insert(END,msg["sender"]+":"+message.decode()+"\n")
+                self.messages[self.count] = {"sender":msg["sender"],"message":message.decode(),"time":round(time.time(),3)}
+                self.count = self.count+1
             if(msg["code"] == 7):
                 self.display.insert(END,msg["Message"]+"\n","System")
             if(msg["code"] == 8):
@@ -168,12 +170,37 @@ class messenger:
         self.s.send(message.encode())
     def broadcast(self,msg):
         for x in self.groupMems:
-            print("sending to:"+x)
+            print("sending message to "+x)
             encryptor = PKCS1_OAEP.new(self.groupMems[x])
             cipher = encryptor.encrypt(msg.encode())
             message = json.dumps({"code":1,"Message":base64.b64encode(cipher),"sender":self.username,"reciever":x})
             self.s.send(message.encode())
     # sends exit message to server, allowing for graceful shutdown
+    def timer(self):
+        past = time.time()
+        popped = []
+        while True:
+            current = time.time()
+            if(round(current - past,3) %10 == 0):
+                temp = self.messages
+                print(temp)
+                for x in temp:
+                    print(abs(round(temp[x]["time"] - current)))
+                    if abs(round(temp[x]["time"] - current))>=30:
+                        if(self.messages[x]["message"] == "-- burned --"):
+                            if(x not in popped):
+                                popped.append(x)
+                            print(popped)
+                        else:
+                            self.messages[x]["message"] = "-- burned --"
+                            self.messages[x]["time"] = round(time.time())
+                self.display.delete(1.0,END)
+                for x in popped:
+                    self.messages.pop(x)
+                    popped.remove(x)
+                    print(self.messages)
+                for x in self.messages:
+                    self.display.insert(END,self.messages[x]["sender"]+":"+self.messages[x]["message"]+"\n")
     def shutdown(s,self):
         message = json.dumps({"code":2,"Message":"shutdown request","username":self.username})
         s.send(message.encode())

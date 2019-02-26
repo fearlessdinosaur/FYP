@@ -19,7 +19,6 @@ class Server:
                 itemlist = {}
                 #generates member list for user and sends username to each member
                 for x in self.groupAssignment:
-                    print(x)
                     if self.groupAssignment[x] == "general":
                         for key,value in self.clients.items():
                             if value == x:
@@ -41,9 +40,7 @@ class Server:
         while True:
             data = await client.recv(1024)
             js = json.loads(data.decode())
-            print(js)
             if( js["code"] == 1):
-                        print("Message:"+js["Message"])
                         await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],js["reciever"],self)
             if(js["code"] == 5):
                 await Server.MkGroup(client,addr,Uname,js["Message"],self)
@@ -75,7 +72,7 @@ class Server:
         
     async def broadcast(client,addr,Uname,message,reciever,self):
         js = json.dumps({"code":1,"Message":message,"sender":Uname,"reciever":reciever})
-        print(client)
+        print("sending message from "+Uname+" to "+reciever)
         await client.send(js.encode())
 
     async def listGroup(self,client,addr,Uname):

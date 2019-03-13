@@ -1,10 +1,18 @@
 from curio import run,spawn,tcp_server
 import simplejson as json
 import Crypto
+import os
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto import Random
+from threading import Thread
+
+from pyftpdlib.authorizers import DummyAuthorizer
+from pyftpdlib.handlers import FTPHandler
+from pyftpdlib.servers import FTPServer
+
 class Server:
+    
     # based off accept connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a
     async def make_uplink(self,client,addr):
         print("new connection from "+str(addr))
@@ -15,30 +23,26 @@ class Server:
             if Uname is not None:
                 await Server.get_Key(client,Uname,addr,self)
                 js = json.dumps({"code":7,"Message":"welcome "+Uname+",you may now start chatting"})
+                print(js)
                 await client.send(js.encode())
                 itemlist = {}
                 #generates member list for user and sends username to each member
-                for x in self.groupAssignment:
-                    if self.groupAssignment[x] == "general":
-                        for key,value in self.clients.items():
-                            if value == x:
-                                if key != Uname:
-                                    userData = json.dumps({"code":12,"Message":self.KeyTab[Uname].exportKey(format = "PEM",passphrase=None,pkcs=1),"user":Uname})
-                                    print(userData)
-                                    await x.send(userData.encode())
-                                itemlist[key] = self.KeyTab[key].exportKey(format = "PEM",passphrase=None,pkcs=1)
+                itemlist = await self.keyShare(Uname,"general")
                 #sends list on to new user 
                 js = json.dumps({"code":11,"Message":itemlist})
                 await client.send(js.encode())
                 await Server.chat(client,addr,Uname,self)
             else:
-               js = json.dumps({"code":7,"Message":"sorry username is taken"})
-               await client.send(js.encode()) 
+                js = json.dumps({"code":7,"Message":"sorry username is taken"})
+                await client.send(js.encode()) 
         
     # based off accept handle connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a           
     async def chat(client,addr,Uname,self):
         while True:
-            data = await client.recv(1024)
+            data = await client.recv(2048)
+            if( len(data) == 0 ):
+                self.client.close()
+                self.clients.pop(client)
             js = json.loads(data.decode())
             if( js["code"] == 1):
                         await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],js["reciever"],self)
@@ -46,6 +50,9 @@ class Server:
                 await Server.MkGroup(client,addr,Uname,js["Message"],self)
             if(js["code"] == 2):
                 self.clients.pop(Uname)
+                self.groupAssignment.pop(client)
+                self.KeyTab.pop(client)
+                client.close()
                 print(self.clients)
             if(js["code"] == 7):
                 await self.listGroup(client,addr,Uname)
@@ -83,23 +90,55 @@ class Server:
         if group not in self.groups:
             self.groups.append(group)
             self.groupAssignment[client] = group
-            jsConf= json.dumps({"code":1,"Message":"group creation successful"})
+            js = json.dumps({"code":11,"Message":await self.keyShare(Uname,group)})
+            await client.send(js.encode())
+            jsConf= json.dumps({"code":7,"Message":"group creation successful"})
             jsAssign = json.dumps({"code":5,"Message":group})
+            os.mkdir("Files/"+group)
             await client.send(jsConf.encode())
             await client.send(jsAssign.encode())
-
+            
     async def SetGroup(self,client,addr,uname,group):
         if group in self.groups:
             self.groupAssignment[client] = group
+            js = json.dumps({"code":11,"Message":await self.keyShare(uname,group)})
             jsAssign = json.dumps({"code":5,"Message":group})
             await client.send(jsAssign.encode())
+            await client.send(js.encode())
             
+    def ftp_setup():
+        aut = DummyAuthorizer()
+        aut.add_user("user","pass","Files",perm="elradfmw")
+        aut.add_anonymous("Files",perm="elradfmw")
+        
+        handler = FTPHandler
+        handler.authorizer = aut
+        
+        server = FTPServer(("127.0.0.1", 1026), handler)
+        server.serve_forever()        
+            
+    async def keyShare(self,uname,group):
+        print("running keyshare....")
+        itemlist = {}
+        for x in self.groupAssignment:
+                    if self.groupAssignment[x] == group:
+                        for key,value in self.clients.items():
+                            if value == x:
+                                print(key)
+                                if key != uname:
+                                    userData = json.dumps({"code":12,"Message":self.KeyTab[Uname].exportKey(format = "PEM",passphrase=None,pkcs=1),"user":Uname})
+                                    print(userData)
+                                    await x.send(userData.encode())
+                                itemlist[key] = self.KeyTab[key].exportKey(format = "PEM",passphrase=None,pkcs=1)
+        print("keyshare complete")                        
+        return(itemlist)
     def __init__(self):
         self.clients = {}
         self.groups = ["general"]
         self.groupAssignment = {}
         self.KeyTab = {}
         port = 1661
+        Thread(target=Server.ftp_setup).start()
         run(tcp_server,'',port,self.make_uplink)
 
 if __name__ == "__main__":

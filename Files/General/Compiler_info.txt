@@ -1,5 +1,0 @@
-at least declaration and main function.
-one page
-may include variables
-no ifs,loops or cases 
-just basic correct parsing 

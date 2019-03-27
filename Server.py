@@ -6,7 +6,7 @@ from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto import Random
 from threading import Thread
-
+import shutil
 from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import FTPServer
@@ -32,6 +32,7 @@ class Server:
                 js = json.dumps({"code":11,"Message":itemlist})
                 await client.send(js.encode())
                 await Server.chat(client,addr,Uname,self)
+                break
             else:
                 js = json.dumps({"code":7,"Message":"sorry username is taken"})
                 await client.send(js.encode()) 
@@ -39,32 +40,56 @@ class Server:
     # based off accept handle connection code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a           
     async def chat(client,addr,Uname,self):
         while True:
-            data = await client.recv(2048)
-            if( len(data) == 0 ):
-                self.client.close()
-                self.clients.pop(client)
-            js = json.loads(data.decode())
-            if( js["code"] == 1):
-                        await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],js["reciever"],self)
-            if(js["code"] == 5):
-                await Server.MkGroup(client,addr,Uname,js["Message"],self)
-            if(js["code"] == 2):
-                self.clients.pop(Uname)
-                self.groupAssignment.pop(client)
-                self.KeyTab.pop(client)
-                client.close()
-                print(self.clients)
-            if(js["code"] == 7):
-                await self.listGroup(client,addr,Uname)
-            if(js["code"] == 9):
-                await self.SetGroup(client,addr,Uname,js["Message"])
-            if(js["code"] == 11):
-                await self.SendMembers(client,addr,Uname,js["Message"])
+            try:
+                data = await client.recv(2048)
+                js = json.loads(data.decode())
+                if( js["code"] == 1):
+                            await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],js["reciever"],self)
+                if(js["code"] == 5):
+                    await Server.MkGroup(client,addr,Uname,js["Message"],self)
+                if(js["code"] == 2):
+                    self.clients.pop(Uname)
+                    self.groupAssignment.pop(client)
+                    client.close()
+                    print(self.clients)
+                if(js["code"] == 7):
+                    await self.listGroup(client,addr,Uname)
+                if(js["code"] == 9):
+                    await self.SetGroup(client,addr,Uname,js["Message"])
+                if(js["code"] == 11):
+                    await self.SendMembers(client,addr,Uname,js["Message"])
+                if(js["code"] == 14):
+                    key = js["Message"]
+                    print(key)
+                    self.files[key] = 0
+                    await self.OfferDownload(client,addr,Uname,js["Message"],js["sender"])      
+                if(js["code"] == 15):
+                    self.files[js["Message"]] = self.files[js["Message"]] - 1
+                    if(self.files[js["Message"]] <= 0):
+                        os.remove(js["Message"])                
+            except Exception as e:
+                print(e)
+                print("before:"+str(self.clients))
                 
-            
-    # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a        
+                if(Uname in self.clients):
+                    self.clients.pop(Uname)
+                print("After:"+str(self.clients))
+                break
+           
+    # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a      
+    
+    async def OfferDownload(self,client,addr,Uname,file,sender):
+        for x in self.groupAssignment:
+            if(self.groupAssignment[x] == self.groupAssignment[client]):
+                self.files[file] = self.files[file] + 1
+                js = json.dumps({"code":13,"Message":file,"sender":sender})
+                await x.send(js.encode())
+                
     async def assign_user(client,addr,self):
-        message = await client.recv(1024)
+        try:
+            message = await client.recv(1024)
+        except Exception as e:
+            return 0
         js = json.loads(message.decode())
         username = js["Message"]
         if(username not in self.clients):    
@@ -89,6 +114,7 @@ class Server:
     async def MkGroup(client,addr,Uname,group,self):
         if group not in self.groups:
             self.groups.append(group)
+            oldGroup = self.groupAssignment[client]
             self.groupAssignment[client] = group
             js = json.dumps({"code":11,"Message":await self.keyShare(Uname,group)})
             await client.send(js.encode())
@@ -97,6 +123,16 @@ class Server:
             os.mkdir("Files/"+group)
             await client.send(jsConf.encode())
             await client.send(jsAssign.encode())
+            j = 0
+            for x in self.groupAssignment:
+                if(self.groupAssignment[x] == oldGroup):
+                    j = j+1
+            if(j < 1):
+                self.groups.remove(oldGroup)
+                try:
+                    shutil.rmtree(oldGroup)
+                except OSError as e:
+                    print("ERROR: %s - %s"%(e.filename,e.strerror))
             
     async def SetGroup(self,client,addr,uname,group):
         if group in self.groups:
@@ -134,6 +170,7 @@ class Server:
         return(itemlist)
     def __init__(self):
         self.clients = {}
+        self.files = {}
         self.groups = ["general"]
         self.groupAssignment = {}
         self.KeyTab = {}

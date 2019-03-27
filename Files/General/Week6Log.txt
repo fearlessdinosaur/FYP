@@ -1,0 +1,28 @@
+
+DOC SCRUBBER v1.2 
+Analysis Performed at 09:31:34 on 24/10/2018
+File Analyzed: C:\Users\dcrai\Downloads\Week6.doc
+
+
+Title: 
+Author: Thomas Cronin
+Company: 
+Keywords: 
+Subject: 
+Comments: 
+Template Used: Normal
+Application: Microsoft Office Word
+Created: 24/10/2018 09:26:00
+Last Saved: 24/10/2018 09:31:00
+Last Edited By: Craig Fox
+Last Printed: 
+Page Count: 1
+Word Count: 5
+Character Count: 31
+Revision Count: 4
+Total Editing Time (minutes): 0
+
+Unique Identifier (GUID): Not Found.
+Recent Hyperlinks List: Not Found.
+
+Revision Log: None Found.

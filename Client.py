@@ -7,53 +7,102 @@ import re
 import simplejson as json
 from sys import exit
 from ftplib import FTP
-
+import ftplib
 import Crypto
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto import Random
-
 import base64
-
 from ftplib import FTP
 
 class messenger:
+    
+    
+    def check_files(self):
+        print("checking for updates....")
+        c = 0
+        accept = []
+        refuse = []
+        for j in range(0,len(self.files)) :
+            
+            string = "do you want to download "+ str(self.files[j][0])+"  from "+ str(self.files[j][1])
+            label = Label(self.side_panel,text = string)
+            label.grid(row=j+1,column=0)
+            accept = Button(self.side_panel,text = "Accept",command = lambda:[self.download_file(self.files[j][0]),self.files.pop(j)])
+            accept.grid(row = j+1,column = 1)
+            refuse= Button(self.side_panel,text = "Refuse",command = lambda:self.file.pop(j))
+            refuse.grid(row = j+1,column = 2)
+        self.top.after(1000,self.check_files)
 
     def __init__(self):
-        self.top = Tk()
-        self.height = self.top.winfo_screenheight()
-        self.width = self.top.winfo_screenwidth()
-        self.top.geometry("725x375")
+    
+        self.shutdown_flag = False
+        self.window_flag = True
+        self.files = []
         self.count =0
         host = '127.0.0.1'
         port = 1661
         self.groups = ["General"]
-        rand = Random.new().read
-        self.key = RSA.generate(2048, rand)
-        self.pub = self.key.publickey()
-
-        self.top.title("Private Chat")
-        display_Frame = Frame(self.top)
-        inputFrame = Frame(self.top)
-        display_Frame.grid(row=0,column=0, columnspan = 3)
-        inputFrame.grid(row=1, column=1)
-
-        self.display = Text(display_Frame, height=20,width= 80)
-        self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5))
-        self.display.tag_configure("System",foreground="dark blue")
-        self.scroll = Scrollbar(display_Frame)
-        self.scroll.grid(row = 1,column = 6,rowspan=5)
-        self.scroll.config(command=self.display.yview)
-        self.display.config(yscrollcommand=self.scroll.set)
-
-
         self.username = ""
         self.groupName = "General"
         self.messages = {}
         self.s = sock.socket(sock.AF_INET,sock.SOCK_STREAM)
         self.s.connect((host,port))
-        Thread(target=messenger.getmsg, args=(self.s,self)).start()
-        Thread(target=messenger.timer, args =(self,)).start()
+        
+        rand = Random.new().read
+        self.key = RSA.generate(2048,rand)
+        self.pub = self.key.publickey()        
+        
+        self.root = Tk()
+        name = Entry(self.root)
+        accept = Button(self.root,text="Accept",command=lambda:[self.userCheck(name.get())])
+        close = Button(self.root,text="close",command=lambda: self.root.destroy())
+        
+        name.grid(row = 0,column=0)
+        accept.grid(row = 2,column=0)
+        close.grid(row = 2,column=1)
+        self.root.mainloop()
+        
+    def userCheck(self,username):
+        message = json.dumps({"code":0,"Message":username,"username":self.username})
+        self.s.send(message.encode())
+        x = self.s.recv(1024)
+        x = json.loads(x)
+        if( x["Message"] == "sorry username is taken"):
+            lab = Label(self.root,text="username taken, try another")
+            lab.grid(row=1,column=0)
+            
+        else:
+            self.username = username
+            print(self.username)
+            key = self.pub.exportKey(format = "PEM",passphrase=None,pkcs=1)
+            self.s.send(key)
+            self.root.destroy()
+            self.chat_app()
+            
+    def chat_app(self):
+        self.top = Tk()
+        self.height = self.top.winfo_screenheight()
+        self.width = self.top.winfo_screenwidth()
+        self.top.geometry("725x375")
+        rand = Random.new().read
+        self.side_panel = Frame(self.top,bg="black",relief=SUNKEN)
+        self.side_panel.grid(row=0,column=4)
+        self.tag = Label(self.side_panel,text = "Downloads")
+        self.tag.grid(row=0,column=0)
+        self.top.title("Private Chat")
+        display_Frame = Frame(self.top)
+        inputFrame = Frame(self.top)
+        display_Frame.grid(row=0,column=0,columnspan= 3,rowspan=10)
+        inputFrame.grid(row=11, column=1)
+        self.display = Text(display_Frame, height=20,width= 80)
+        self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5))
+        self.display.tag_configure("System",foreground="dark blue")
+        self.scroll = Scrollbar(display_Frame)
+        self.scroll.grid(row = 1,column = 6,rowspan=10)
+        self.scroll.config(command=self.display.yview)
+        self.display.config(yscrollcommand=self.scroll.set)
+        
         self.message = Entry(inputFrame,text="Please enter Message",width=60)
         self.message.grid(row=2,column=0,columnspan=5)
 
@@ -79,21 +128,20 @@ class messenger:
         
         File_Menu = Menu(menu,tearoff=0)
         File_Menu.add_command(label="Upload File",command = lambda:messenger.FileUpload(self,))
+        File_Menu.add_command(label="Download File",command = lambda:messenger.FileDownload(self,))
         menu.add_cascade(label="Files",menu=File_Menu)
 
         self.send = Button(inputFrame,text="SEND",command=lambda:messenger.sendmsg(self.s,self))
         self.send.grid(row=2,column = 6)
-
-        Thread(target=messenger.FTP_setup, args =(self,)).start()
-        self.top.config(menu=menu)
-        self.top.protocol("WM_DELETE_WINDOW",lambda:messenger.shutdown(self.s,self))
-        self.send.mainloop()
-        self.display.mainloop()
-        self.scroll.mainloop()
-        self.message.mainloop()
-        self.top.mainloop()
         
-
+        self.top.config(menu=menu)
+        self.top.protocol("WM_DELETE_WINDOW",lambda:[messenger.shutdown(self.s,self),self.top.destroy()])
+        self.check_files()
+        Thread(target=messenger.getmsg, args=(self.s,self)).start()
+        Thread(target=messenger.timer, args =(self,)).start()
+        Thread(target=messenger.FTP_setup, args =(self,)).start()        
+        self.top.mainloop()       
+        
     def FileUpload(self):
         top = Tk()
         top.geometry("200x100")
@@ -104,8 +152,11 @@ class messenger:
         path.grid(row=0,column=0,columnspan=3)
         browse.grid(row=0,column=4)
         subButton.grid(row=1,column=0)
-        mainloop()        
+        mainloop()  
         
+    def FileDownload(self,file,sender):
+        self.files.append([file,sender])
+        print(self.files)
     
     # Based on code from https://www.techinfected.net/2017/07/create-simple-ftp-server-client-in-python.html
     def FTP_setup(self):
@@ -130,11 +181,18 @@ class messenger:
         self.message.delete(0,END)
 
     def getmsg(s,self):
-        while True:
-            counter = 0
+        counter = 0
+        while self.shutdown_flag == False:
+            print(self.shutdown_flag)
             print("listening")
-            js = s.recv(1024)
-            l = re.findall("^{.*}$",js.decode())
+            print(s)
+            try:
+                js = s.recv(2048)
+            except:
+                self.ftp.close()
+                exit(0)
+            print(js)
+            l = re.findall("^{.+?}|{.+?{.+?}}",js.decode())
             print(l)
             for x in l:
                 print(x)
@@ -169,7 +227,11 @@ class messenger:
                     print("new member joined")
                     print(msg["user"])
                     self.groupMems[msg["user"]] = RSA.importKey(msg["Message"],passphrase=None)
-                    print(self.groupMems)
+                    print(self.groupMems)                    
+                    sleep(5)
+                if(msg["code"] == 13):
+                    self.FileDownload(msg["Message"],msg["sender"])
+        print("recieve has been shut down")
 
 
     # opens group creation window
@@ -229,15 +291,37 @@ class messenger:
             
     # Based on code from https://www.techinfected.net/2017/07/create-simple-ftp-server-client-in-python.html
     def upload_File(self,file):
+        self.ftp = FTP('')
+        self.ftp.connect('localhost',1026)
+        self.ftp.login()
+        self.ftp.cwd('General')
+        self.ftp.retrlines('LIST')          
         x = file.split("/")
+        print("working till this point")
+        js = json.dumps({"code":14,"Message":x[len(x)-1],"sender":self.username})
+        print("starting this...")
+        self.s.send(js.encode())
+        print("finished that ok...")
         self.ftp.storlines('STOR '+x[len(x)-1], open(file, 'rb'))
-        self.ftp.quit()
-
+        
+    def download_file(self,file):
+        self.ftp = FTP('')
+        self.ftp.connect('localhost',1026)
+        self.ftp.login()
+        self.ftp.cwd('General')
+        self.ftp.retrlines('LIST')          
+        print(file)
+        x = open(file,"w")
+        self.ftp.retrlines("RETR "+file,x.write)
+        x.close()
+        self.ftp.close()
+        
     # sends exit message to server, allowing for graceful shutdown
     def timer(self):
         past = time.time()
         popped = []
-        while True:
+        while self.shutdown_flag == False:
+            print("flag is:"+str(self.shutdown_flag))
             time.sleep(10)
             current = time.time()
             temp = self.messages
@@ -252,7 +336,11 @@ class messenger:
                     else:
                         self.messages[x]["message"] = "-- burned --"
                         self.messages[x]["time"] = round(time.time())
-            self.display.delete(1.0,END)
+            if(self.window_flag == True):
+                self.display.delete(1.0,END)
+            else:
+                exit(0)
+                break
             for burned_message in popped:
                 self.messages.pop(burned_message)
                 popped.remove(burned_message)
@@ -262,14 +350,17 @@ class messenger:
                     self.display.insert(END,self.messages[x]["message"]+"\n","System")
                 else:
                     self.display.insert(END,self.messages[x]["sender"]+":"+self.messages[x]["message"]+"\n")
-                    
     def shutdown(s,self):
+        self.shutdown_flag = True
+        self.window_flag = False
+        print("running shutdown")
         message = json.dumps({"code":2,"Message":"shutdown request","username":self.username})
         s.send(message.encode())
         self.top.destroy()
-        self.s.shutdown()
+        self.s.shutdown(sock.SHUT_RDWR)
         self.s.close()
-        exit()
+        self.ftp.close()
+        exit(0)
 
 if __name__ == "__main__":
     messenger()

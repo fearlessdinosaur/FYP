@@ -66,6 +66,14 @@ class Server:
                 if(js["code"] == 15):
                     self.files[js["Message"]] = self.files[js["Message"]] - 1
                     if(self.files[js["Message"]] <= 0):
+                        alf = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+                        st = os.stat(js["Message"])
+                        size = st.st_size
+                        for a in range(0,10):
+                            p = open(js["Message"],"w")
+                            for b in range(0,size):
+                                p.write(alf[random.randint(0,25)])
+                            p.close()
                         os.remove(js["Message"])                
             except Exception as e:
                 print(e)

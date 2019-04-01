@@ -19,7 +19,6 @@ class messenger:
     
     
     def check_files(self):
-        print("checking for updates....")
         c = 0
         accept = []
         refuse = []
@@ -167,17 +166,9 @@ class messenger:
         self.ftp.retrlines('LIST')  
         
     def sendmsg(s,self):
-        if(self.username == ""):
-            message = json.dumps({"code":0,"Message":self.message.get(),"username":self.username})
-            s.send(message.encode())
-            self.username = self.message.get()
-            print(self.username)
-            key = self.pub.exportKey(format = "PEM",passphrase=None,pkcs=1)
-            s.send(key)
-        else:
-            message =self.message.get()
-            print(message)
-            self.broadcast(message)
+        message =self.message.get()
+        print(message)
+        self.broadcast(message)
         self.message.delete(0,END)
 
     def getmsg(s,self):

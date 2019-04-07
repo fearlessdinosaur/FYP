@@ -1,0 +1,22 @@
+https://docs.microsoft.com/en-us/windows/desktop/secauthz/access-control
+https://docs.microsoft.com/en-us/windows/desktop/secauthz/access-control-model
+https://docs.microsoft.com/en-us/windows/desktop/SecGloss/p-gly#-security-process-gly
+https://answers.microsoft.com/en-us/windows/forum/windows_10-files-winpc/give-permissions-to-files-and-folders-in-windows/78ee562c-a21f-4a32-8691-73aac1415373
+https://stackoverflow.com/questions/182197/how-do-i-watch-a-file-for-changes
+
+Features over telegram:
+https://www.slant.co/options/4568/~telegram-review
+
+- all chats encrypted
+- desktop application
+- no personal info given 
+
+
+UI info:
+https://www.activestate.com/blog/2015/10/python-gui-programming-wxpython-vs-tkinter
+https://www.slant.co/versus/16724/22768/~tkinter_vs_pyqt
+
+Alternatives:
+https://www.slant.co/options/4568/~telegram-review
+https://www.slant.co/options/1989/~signal-review
+https://www.slant.co/options/1983/~whatsapp-review

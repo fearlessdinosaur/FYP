@@ -20,19 +20,34 @@ class messenger:
     
     def check_files(self):
         c = 0
-        accept = []
-        refuse = []
+        accepts = []
+        denys = []
+        labels = []
+        
+        for x in range(0,len(accepts)):
+            self.destructor(denys[x])
+            self.destructor(accepts[x])
+            self.destructor(labels[x])
         for j in range(0,len(self.files)) :
+            print("creating button for "+self.files[j][0])
+            string = str(self.files[j][0])+"  from "+ str(self.files[j][1])
             
-            string = "do you want to download "+ str(self.files[j][0])+"  from "+ str(self.files[j][1])
-            label = Label(self.side_panel,text = string)
+            label = Label(self.side_panel,text = string,width=20)
             label.grid(row=j+1,column=0)
-            accept = Button(self.side_panel,text = "Accept",command = lambda:[self.download_file(self.files[j][0]),self.files.pop(j)])
-            accept.grid(row = j+1,column = 1)
-            refuse= Button(self.side_panel,text = "Refuse",command = lambda:self.file.pop(j))
-            refuse.grid(row = j+1,column = 2)
-        self.top.after(1000,self.check_files)
-
+            self.accept = Button(self.side_panel,text = "Accept")
+            self.refuse= Button(self.side_panel,text = "Refuse")
+            self.accept.grid(row = j+1,column = 1)
+            self. refuse.grid(row = j+1,column = 2)            
+            accepts.append(self.accept)
+            denys.append(self.refuse)
+            labels.append(label)
+            self.accept["command"] = lambda:[self.download_file(self.files[j][0]),self.files.pop(j),self.destructor(accepts[j]),self.destructor(denys[j]),self.destructor(labels[j])]
+            self.refuse["command"] = lambda:[self.files.pop(j),self.destructor(denys[j]),self.destructor(accepts[j]),self.destructor(labels[j])]
+        self.top.after(10000,self.check_files)
+             
+    def destructor(self,thing):
+        thing.destroy()
+        
     def __init__(self):
     
         self.shutdown_flag = False
@@ -53,13 +68,15 @@ class messenger:
         self.pub = self.key.publickey()        
         
         self.root = Tk()
+        self.root.geometry("200x100")
         name = Entry(self.root)
-        accept = Button(self.root,text="Accept",command=lambda:[self.userCheck(name.get())])
-        close = Button(self.root,text="close",command=lambda: self.root.destroy())
-        
-        name.grid(row = 0,column=0)
-        accept.grid(row = 2,column=0)
-        close.grid(row = 2,column=1)
+        self.button_box = Frame(self.root)
+        accept = Button(self.button_box,text="Accept",command=lambda:[self.userCheck(name.get())])
+        close = Button(self.button_box,text="close",command=lambda: self.root.destroy())
+        name.pack(pady=10)
+        self.button_box.pack()
+        accept.pack(side="left",padx=5)
+        close.pack(side="left",padx=5)
         self.root.mainloop()
         
     def userCheck(self,username):
@@ -83,19 +100,28 @@ class messenger:
         self.top = Tk()
         self.height = self.top.winfo_screenheight()
         self.width = self.top.winfo_screenwidth()
-        self.top.geometry("725x375")
+        print(self.height,self.width)
+        
+        self.top.geometry('{}x{}'.format(self.width,self.height))
         rand = Random.new().read
-        self.side_panel = Frame(self.top,bg="black",relief=SUNKEN)
+        self.side_panel = Frame(self.top,relief=SUNKEN)
         self.side_panel.grid(row=0,column=4)
+        
+        self.list_files = Spinbox(self.side_panel)
+        self.downLabel = Label(self.side_panel,text= "downloads")
+        self.downLabel.grid(row=0,column=0)
+        self.list_files.grid(row = 1, column = 0)
         self.tag = Label(self.side_panel,text = "Downloads")
         self.tag.grid(row=0,column=0)
-        self.top.title("Private Chat")
-        display_Frame = Frame(self.top)
+        self.top.title("Crypto Chat")
+        display_Frame = Frame(self.top,width=self.width-100,height= self.height-50)
         inputFrame = Frame(self.top)
         display_Frame.grid(row=0,column=0,columnspan= 3,rowspan=10)
+        display_Frame.grid_propagate(False)
+        
         inputFrame.grid(row=11, column=1)
-        self.display = Text(display_Frame, height=20,width= 80)
-        self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5))
+        self.display = Text(display_Frame)
+        self.display.grid(row = 1, column = 1, columnspan = 5,padx=(40,5),sticky="we")
         self.display.tag_configure("System",foreground="dark blue")
         self.scroll = Scrollbar(display_Frame)
         self.scroll.grid(row = 1,column = 6,rowspan=10)
@@ -151,6 +177,7 @@ class messenger:
         path.grid(row=0,column=0,columnspan=3)
         browse.grid(row=0,column=4)
         subButton.grid(row=1,column=0)
+        top.lift()
         mainloop()  
         
     def FileDownload(self,file,sender):
@@ -176,7 +203,6 @@ class messenger:
         while self.shutdown_flag == False:
             print(self.shutdown_flag)
             print("listening")
-            print(s)
             try:
                 js = s.recv(2048)
             except:

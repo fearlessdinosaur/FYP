@@ -1,0 +1,3 @@
+infiletest file for sending.
+this will be copied by the system
+this is good.

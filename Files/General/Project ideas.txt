@@ -1,0 +1,16 @@
+Encrypted messaging system:
+	- client and server
+	- encrypted client side 
+	- group based (set up chat rooms)
+	- temporary username linked to ip only while session is up
+	- no chat logs
+	- passworded rooms
+	- passed through server
+	- decrypted when needed 
+
+Club management system:
+	- web based application 
+	- Manage equiptment
+	- manage membership
+	- Track payments, subs etc
+	- Calendar to keep track of upcoming events.

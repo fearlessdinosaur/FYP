@@ -1,0 +1,13 @@
+2. 	
+	-packet loss
+	-delay
+	-jitter
+	-unordered packets
+	-duplication
+	-modified p ( truncated,bit loss)
+	
+3. exceeds mtu
+4. received,stored in buffer and reordered
+5.stateful and stateless
+
+6. ipv6 has a fixed header, with no optional fields. Extension headers extend this header

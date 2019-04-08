@@ -50,7 +50,7 @@ class Server:
                 if(js["code"] == 2):
                     self.clients.pop(Uname)
                     self.groupAssignment.pop(client)
-                    client.close()
+                    await client.close()
                     print(self.clients)
                 if(js["code"] == 7):
                     await self.listGroup(client,addr,Uname)
@@ -65,6 +65,7 @@ class Server:
                     await self.OfferDownload(client,addr,Uname,js["Message"],js["sender"])      
                 if(js["code"] == 15):
                     self.files[js["Message"]] = self.files[js["Message"]] - 1
+                    print(self.files[js["Message"]])
                     if(self.files[js["Message"]] <= 0):
                         alf = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
                         st = os.stat(js["Message"])
@@ -135,7 +136,7 @@ class Server:
             for x in self.groupAssignment:
                 if(self.groupAssignment[x] == oldGroup):
                     j = j+1
-            if(j < 1):
+            if(j < 1 and oldGroup != "general"):
                 self.groups.remove(oldGroup)
                 try:
                     shutil.rmtree(oldGroup)
@@ -144,11 +145,17 @@ class Server:
             
     async def SetGroup(self,client,addr,uname,group):
         if group in self.groups:
+            old = self.groupAssignment[uname]
             self.groupAssignment[client] = group
             js = json.dumps({"code":11,"Message":await self.keyShare(uname,group)})
             jsAssign = json.dumps({"code":5,"Message":group})
+            
+            dropKey = json.dumps({"code":16,"Message":"uname"})
             await client.send(jsAssign.encode())
             await client.send(js.encode())
+            for x in self.groupAssignment:
+                if groupAssignment[x] == old:
+                    await client.send(dropKey.encode())
             
     def ftp_setup():
         aut = DummyAuthorizer()

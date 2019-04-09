@@ -84,7 +84,9 @@ class messenger:
         self.s.send(message.encode())
         x = self.s.recv(1024)
         x = json.loads(x)
-        if( x["Message"] == "sorry username is taken"):
+        print("Message:"+str(x["Message"]))
+        if( x["Message"] == "uname Taken"):
+            print("username is incorrect")
             lab = Label(self.root,text="username taken, try another")
             lab.grid(row=1,column=0)
             
@@ -164,14 +166,18 @@ class messenger:
         
     def FileUpload(self):
         top = Tk()
-        top.geometry("200x100")
-        path = Entry(top)
-        browse = Button(top,text="Browse",command = lambda: path.insert(1,filedialog.askopenfilename(initialdir="C:/",filetypes =(("text Files",".txt"),("All Files","*.*")),title = "Please select a file to upload")) )
+        top.geometry("200x70")
+        fileBox = Frame(top)
+        path = Entry(fileBox)
+        browse = Button(fileBox,text="Browse",command = lambda: path.insert(1,filedialog.askopenfilename(initialdir="C:/",filetypes =(("text Files",".txt"),("All Files","*.*")),title = "Please select a file to upload")) )
         subButton  = Button(top,text="OK",command = lambda:[self.upload_File(path.get()),top.destroy()])
+        canButton = Button(top,text="Cancel",command =lambda:top.destroy())
         #print(name)
-        path.grid(row=0,column=0,columnspan=3)
-        browse.grid(row=0,column=4)
-        subButton.grid(row=1,column=0)
+        fileBox.pack(pady=5)
+        path.pack(side="left")
+        browse.pack(side="left",padx=3)
+        subButton.pack(side="left",padx=20)
+        canButton.pack(side="left",padx=20)
         top.lift()
         mainloop()  
         
@@ -245,7 +251,7 @@ class messenger:
                     print(msg["user"])
                     self.groupMems[msg["user"]] = RSA.importKey(msg["Message"],passphrase=None)
                     print(self.groupMems)                    
-                    sleep(5)
+                    time.sleep(5)
                 if(msg["code"] == 13):
                     self.FileDownload(msg["Message"],msg["sender"])
                 if(msg["code"] == 16):
@@ -259,13 +265,15 @@ class messenger:
     
     def CreateGroup(self):
         pop = Tk()
-        name = Label(pop,text="Name")
-        name.grid(row = 0,column = 0)
-
-        name_enter = Entry(pop,text="Enter group name")
-        name_enter.grid(row=0,column=1,columnspan=3)
+        dataBox = Frame(pop)
+        dataBox.pack(pady=5)
+        name = Label(dataBox,text="Name")
+        name.pack(side="left")
+        pop.geometry("200x100")
+        name_enter = Entry(dataBox,text="Enter group name")
+        name_enter.pack(side="left")
         commit = Button(pop,text="Accept",command = lambda:[messenger.SendGroup(name_enter.get(),self),pop.destroy()])
-        commit.grid(row=1,column=0)
+        commit.pack(padx=10,pady=10)
         mainloop()
     # opens group selection window
     
@@ -273,15 +281,20 @@ class messenger:
         message = json.dumps({"code":7,"Message":"group request","username":self.username})
         self.s.send(message.encode())
         pop = Tk()
-        group = Label(pop,text= "group")
-        group.grid(row=0,column = 0)
+        pop.geometry("200x100")
+        selArea = Frame(pop)
+        selArea.pack()
+        group = Label(selArea,text= "group")
+        group.pack(side="left")
         var = StringVar(pop)
         var.set(self.groups[0])
-        drop = OptionMenu(pop,var,*self.groups)
-        drop.grid(row=0,column=1)
+        drop = OptionMenu(selArea,var,*self.groups)
+        drop.pack(side="left")
 
         pick = Button(pop,text="choose",command = lambda:[messenger.setGroup(var.get(),self),pop.destroy()])
-        pick.grid(row=1,column=0)
+        cancel = Button(pop,text="cancel",command = lambda:[pop.destroy()])
+        pick.pack(side="left",padx=20,pady=10)
+        cancel.pack(side="left",padx=30,pady=10)
         
     #group join function
     def setGroup(group,self):

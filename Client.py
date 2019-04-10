@@ -183,7 +183,6 @@ class messenger:
         
     def FileDownload(self,file,sender):
         self.files.append([file,sender])
-        print(self.files)
     
     # Based on code from https://www.techinfected.net/2017/07/create-simple-ftp-server-client-in-python.html
     def FTP_setup(self):
@@ -195,25 +194,19 @@ class messenger:
         
     def sendmsg(s,self):
         message =self.message.get()
-        print(message)
         self.broadcast(message)
         self.message.delete(0,END)
 
     def getmsg(s,self):
         counter = 0
         while self.shutdown_flag == False:
-            print(self.shutdown_flag)
-            print("listening")
             try:
                 js = s.recv(2048)
             except:
                 self.ftp.close()
                 exit(0)
-            print(js)
             l = re.findall("^{.+?}|{.+?{.+?}}",js.decode())
-            print(l)
             for x in l:
-                print(x)
                 try:
                     msg = json.loads(x)
                 except:
@@ -221,10 +214,9 @@ class messenger:
                     msg = json.loads(msg)
                     
                 if(msg["code"] == 5):
-                    print("new group ="+msg["Message"])
                     self.group = msg["Message"]
-                    print("setting new group to"+msg["Message"])
                     self.Group_Menu.entryconfigure(0,label="Group:"+msg["Message"])
+                    
                 if(msg["code"] == 1):
                     decr = PKCS1_OAEP.new(self.key)
                     message = base64.b64decode(msg["Message"])
@@ -232,37 +224,37 @@ class messenger:
                     self.display.insert(END,msg["sender"]+":"+message.decode()+"\n")
                     self.messages[self.count] = {"sender":msg["sender"],"message":message.decode(),"time":round(time.time(),3)}
                     self.count = self.count+1
+                    
                 if(msg["code"] == 7):
                     self.messages[self.count] = {"sender":"system","message":msg["Message"],"time":round(time.time(),3)}
                     self.display.insert(END,msg["Message"]+"\n","System")
                     self.count = self.count+1
+                    
                 if(msg["code"] == 8):
                     self.groups = msg["Message"]
+                    
                 if(msg["code"] == 10):
                     self.key = msg["Message"]
-                    print(self.key)
+                    
                 if(msg["code"] == 11):
                     self.groupMems = msg["Message"]
                     for x in self.groupMems:
                         self.groupMems[x] = RSA.importKey(self.groupMems[x],passphrase=None)
-                    print("setting group member list")
+                    
                 if(msg["code"] == 12):
-                    print("new member joined")
-                    print(msg["user"])
                     self.groupMems[msg["user"]] = RSA.importKey(msg["Message"],passphrase=None)
-                    print(self.groupMems)                    
                     time.sleep(5)
+                    
                 if(msg["code"] == 13):
                     self.FileDownload(msg["Message"],msg["sender"])
+                    
                 if(msg["code"] == 16):
                     self.dropKey(msg["Message"])
                     
-        print("recieve has been shut down")
-
     def dropKey(self,user):
         self.groupMems.pop(user)
+        
     # opens group creation window
-    
     def CreateGroup(self):
         pop = Tk()
         dataBox = Frame(pop)
@@ -275,8 +267,8 @@ class messenger:
         commit = Button(pop,text="Accept",command = lambda:[messenger.SendGroup(name_enter.get(),self),pop.destroy()])
         commit.pack(padx=10,pady=10)
         mainloop()
+        
     # opens group selection window
-    
     def FindGroup(self):
         message = json.dumps({"code":7,"Message":"group request","username":self.username})
         self.s.send(message.encode())
@@ -298,7 +290,6 @@ class messenger:
         
     #group join function
     def setGroup(group,self):
-        print("joining new group")
         self.groupMems = {}
         self.groupName = group
         message = json.dumps({"code":9,"Message":group,"username":self.username})
@@ -312,9 +303,7 @@ class messenger:
         self.groupMems = {}
         
     def broadcast(self,msg):
-        print(self.groupMems)
         for x in self.groupMems:
-            print("sending message to "+x)
             encryptor = PKCS1_OAEP.new(self.groupMems[x])
             cipher = encryptor.encrypt(msg.encode())
             message = json.dumps({"code":1,"Message":base64.b64encode(cipher),"sender":self.username,"reciever":x})
@@ -323,27 +312,21 @@ class messenger:
     # Based on code from https://www.techinfected.net/2017/07/create-simple-ftp-server-client-in-python.html
     def upload_File(self,file):
         self.ftp = FTP('')
-        print(self.groupName)
         self.ftp.connect('localhost',1026)
         self.ftp.login()
         self.ftp.cwd("..")
         self.ftp.cwd("../"+self.groupName+"/")
         self.ftp.retrlines('LIST')          
         x = file.split("/")
-        print("working till this point")
         js = json.dumps({"code":14,"Message":x[len(x)-1],"sender":self.username})
-        print("starting this...")
         self.s.send(js.encode())
-        print("finished that ok...")
         self.ftp.storlines('STOR '+x[len(x)-1], open(file, 'rb'))
         
     def download_file(self,file):
-        print(file)
         self.ftp = FTP('')
         self.ftp.connect('localhost',1026)
         self.ftp.login()
         self.ftp.cwd(self.groupName)
-        print(file)
         x = open(file,"wb")
         self.ftp.retrbinary("RETR "+file,x.write)
         x.close()
@@ -354,11 +337,9 @@ class messenger:
         past = time.time()
         popped = []
         while self.shutdown_flag == False:
-            print("flag is:"+str(self.shutdown_flag))
             time.sleep(10)
             current = time.time()
             temp = self.messages
-            print(temp)
             
             #system checks group list for updates
             message = json.dumps({"code":7,"Message":"group request","username":self.username})
@@ -369,12 +350,10 @@ class messenger:
                 break
             
             for x in temp:
-                print(abs(round(temp[x]["time"] - current)))
                 if abs(round(temp[x]["time"] - current))>=30:
                     if(self.messages[x]["message"] == "-- burned --"):
                         if(x not in popped):
                             popped.append(x)
-                        print(popped)
                     else:
                         self.messages[x]["message"] = "-- burned --"
                         self.messages[x]["time"] = round(time.time())
@@ -386,16 +365,15 @@ class messenger:
             for burned_message in popped:
                 self.messages.pop(burned_message)
                 popped.remove(burned_message)
-                print(self.messages)
             for x in self.messages:
                 if(self.messages[x]["sender"] == "system"):
                     self.display.insert(END,self.messages[x]["message"]+"\n","System")
                 else:
                     self.display.insert(END,self.messages[x]["sender"]+":"+self.messages[x]["message"]+"\n")
+                    
     def shutdown(s,self):
         self.shutdown_flag = True
         self.window_flag = False
-        print("running shutdown")
         message = json.dumps({"code":2,"Message":"shutdown request","username":self.username})
         s.send(message.encode())
         self.top.destroy()

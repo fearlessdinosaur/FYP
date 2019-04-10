@@ -149,7 +149,8 @@ class Server:
                     shutil.rmtree(oldGroup)
                 except OSError as e:
                     print("ERROR: %s - %s"%(e.filename,e.strerror))
-            
+        else:
+            self.SetGroup(client,addr,Uname,group)
     async def SetGroup(self,client,addr,uname,group):
         if group in self.groups:
             old = self.groupAssignment[client]

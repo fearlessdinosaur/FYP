@@ -43,9 +43,10 @@ class Server:
     async def chat(client,addr,Uname,self):
         while True:
             try:
+                # recieves data 
                 data = await client.recv(2048)
-                print(data)
                 js = json.loads(data.decode())
+                # runs functions based on code recieved
                 if( js["code"] == 1):
                     await Server.broadcast(self.clients[js["reciever"]],addr,Uname,js["Message"],js["reciever"],self)
                 if(js["code"] == 5):
@@ -67,21 +68,30 @@ class Server:
                     key = js["Message"]
                     print("download offer:"+key)
                     self.files[key] = 0
-                    await self.OfferDownload(client,addr,Uname,js["Message"],js["sender"])      
+                    await self.OfferDownload(client,addr,Uname,js["Message"],js["sender"])  
+                # file scrubber
                 if(js["code"] == 15):
                     self.files[js["Message"]] = self.files[js["Message"]] - 1
-                    print("burning:"+str(self.files[js["Message"]]))
+                    # if 0 downloads left, run burn 
                     if(self.files[js["Message"]] <= 0):
+                        # create alphabet array
                         alf = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+                        # check size of message using stat
                         st = os.stat(js["Message"])
                         size = st.st_size
+                        #wait 5 seconds
                         time.sleep(5)
+                        # runs loop 10 times
                         for a in range(0,10):
                             p = open(js["Message"],"w")
+                            # replaces each byte with random character
                             for b in range(0,size):
                                 p.write(alf[random.randint(0,25)])
                             p.close()
-                        os.remove(js["Message"])                
+                        #deletes file
+                        os.remove(js["Message"])   
+                        
+            # if exception occurs, shut down connection
             except Exception as e:
                 print("exception:"+str(e))
                 print("before:"+str(self.clients))
@@ -91,34 +101,36 @@ class Server:
                 print("After:"+str(self.clients))
                 break
            
-    # based off accept user assignment code found at https://gist.github.com/Cartroo/063f0c03808e9622d33b41f140a63f6a      
-    
+    #function to offer file to be downloaded to each user and count them         
     async def OfferDownload(self,client,addr,Uname,file,sender):
+        # loops through group list
         for x in self.groupAssignment:
+            # checks if groups are the same
             if(self.groupAssignment[x] == self.groupAssignment[client]):
                 self.files[file] = self.files[file] + 1
                 js = json.dumps({"code":13,"Message":file,"sender":sender})
                 await x.send(js.encode())
-                
+
+    # assigns user their username if available            
     async def assign_user(client,addr,self):
-        print("running assign user")
         try:
             message = await client.recv(1024)
         except Exception as e:
             return 0
-        print(message.decode())
         js = json.loads(message.decode())
         username = js["Message"]
+        # set username if free and set up basic user info
         if(username not in self.clients):    
             print("username:"+username)
             self.clients[username] = client
             self.groupAssignment[client] = "general"
             return(username)
-        
+    # ask user for key    
     async def get_Key(client,Uname,addr,self):
         key= await client.recv(1024)
         self.KeyTab[Uname] = RSA.importKey(key,passphrase=None)
         
+    # passes messages between users
     async def broadcast(client,addr,Uname,message,reciever,self):
         js = json.dumps({"code":1,"Message":message,"sender":Uname,"reciever":reciever})
         print("sending message from "+Uname+" to "+reciever)
@@ -126,39 +138,48 @@ class Server:
             await client.send(js.encode())
         except:
             print("something is wrong")
-            
+    
+    # sends group list to users        
     async def listGroup(self,client,addr,Uname):
         js = json.dumps({"code":8,"Message":self.groups})
         await client.send(js.encode())
-        
+    
+    # group creation    
     async def MkGroup(client,addr,Uname,group,self):
+        #create group if group is free
         if group not in self.groups:
+            # creates new group
             self.groups.append(group)
             oldGroup = self.groupAssignment[client]
             self.groupAssignment[client] = group
-            print("group:"+str(self.groupAssignment))
             js = json.dumps({"code":11,"Message":await self.keyShare(Uname,group)})
             await client.send(js.encode())
             jsConf= json.dumps({"code":7,"Message":"group creation successful"})
             jsAssign = json.dumps({"code":5,"Message":group})
+            # create new group directory
             os.mkdir("Files/"+group)
             await client.send(jsConf.encode())
             await client.send(jsAssign.encode())
             j = 0
+            # builds drop key message
             dropKey = json.dumps({"code":16,"Message":uname})
             for x in self.groupAssignment:
+                # tells all old group members to drop users key
                 if(self.groupAssignment[x] == oldGroup):
                     j = j+1
-                    await x.send(dropKey.encode())         
+                    await x.send(dropKey.encode())   
+            # if < 1 person in old group, delete old group from list
             if(j < 1 and oldGroup != "general"):
                 self.groups.remove(oldGroup)
                 try:
                     shutil.rmtree(oldGroup)
                 except OSError as e:
                     print("ERROR: %s - %s"%(e.filename,e.strerror))
+        #else join group
         else:
             self.SetGroup(client,addr,Uname,group)
             
+    #group join        
     async def SetGroup(self,client,addr,uname,group):
         if group in self.groups:
             old = self.groupAssignment[client]
@@ -172,7 +193,7 @@ class Server:
             for x in self.groupAssignment:
                 if self.groupAssignment[x] == old:
                     await x.send(dropKey.encode())
-            
+    # runs standard ftp server setup        
     def ftp_setup():
         aut = DummyAuthorizer()
         aut.add_user("user","pass","Files",perm="elradfmw")
@@ -183,23 +204,27 @@ class Server:
         
         server = FTPServer(("127.0.0.1", 1026), handler)
         server.serve_forever()        
-            
+     
+    # runs key share       
     async def keyShare(self,uname,group):
         itemlist = {}
         
+        # for everyone in all groups
         for x in self.groupAssignment:
+                    # if both in same group
                     if self.groupAssignment[x] == group:
+                        # gets group members key
                         for key,value in self.clients.items():
                             if value == x:
-                                print("key="+key)
-                                print("this too")
+                                # if key is not users key 
                                 if key != uname:
+                                    # send users public key to group member
                                     userData = json.dumps({"code":12,"Message":self.KeyTab[uname].exportKey(format = "PEM",passphrase=None,pkcs=1),"user":uname})
-                                    print(userData)
-                                    print("this other thing")
                                     await x.send(userData.encode())
+                                # add member key to key list
                                 itemlist[key] = self.KeyTab[key].exportKey(format = "PEM",passphrase=None,pkcs=1)                    
         return(itemlist)
+    # function to complete initial set up
     def __init__(self):
         self.clients = {}
         self.files = {}

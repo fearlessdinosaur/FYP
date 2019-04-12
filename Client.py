@@ -35,10 +35,14 @@ class messenger:
             accepts.append(self.accept)
             denys.append(self.refuse)
             labels.append(label)
-            self.accept["command"] = lambda:[self.download_file(self.files[j][0]),self.files.pop(j),self.destructor(accepts[j]),self.destructor(denys[j]),self.destructor(labels[j])]
-            self.refuse["command"] = lambda:[self.files.pop(j),self.destructor(denys[j]),self.destructor(accepts[j]),self.destructor(labels[j])]
+            self.accept["command"] = lambda:[self.fileInform(self.files[j][0]),self.download_file(self.files[j][0]),self.files.pop(j),self.destructor(accepts[j]),self.destructor(denys[j]),self.destructor(labels[j])]
+            self.refuse["command"] = lambda:[self.fileInform(),self.files.pop(j),self.destructor(denys[j]),self.destructor(accepts[j]),self.destructor(labels[j])]
         self.top.after(10000,self.check_files)
-             
+        
+    def fileInform(self,file):
+        js = json.dumps({"code":15,"Message":file})
+        self.s.send(js.encode())
+        
     def destructor(self,thing):
         print("destroying "+str(thing))
         thing.destroy()
@@ -88,7 +92,7 @@ class messenger:
         if( x["Message"] == "uname Taken"):
             print("username is incorrect")
             lab = Label(self.root,text="username taken, try another")
-            lab.grid(row=1,column=0)
+            lab.pack()
             
         else:
             self.username = username
@@ -249,10 +253,12 @@ class messenger:
                     self.FileDownload(msg["Message"],msg["sender"])
                     
                 if(msg["code"] == 16):
+                    print("dropping user "+msg["Message"])
                     self.dropKey(msg["Message"])
                     
     def dropKey(self,user):
         self.groupMems.pop(user)
+        print(self.groupMems)
         
     # opens group creation window
     def CreateGroup(self):
@@ -303,6 +309,7 @@ class messenger:
         self.groupMems = {}
         
     def broadcast(self,msg):
+        print(self.groupMems)
         for x in self.groupMems:
             encryptor = PKCS1_OAEP.new(self.groupMems[x])
             cipher = encryptor.encrypt(msg.encode())
@@ -321,6 +328,7 @@ class messenger:
         js = json.dumps({"code":14,"Message":x[len(x)-1],"sender":self.username})
         self.s.send(js.encode())
         self.ftp.storlines('STOR '+x[len(x)-1], open(file, 'rb'))
+        self.ftp.close()
         
     def download_file(self,file):
         self.ftp = FTP('')
@@ -329,8 +337,8 @@ class messenger:
         self.ftp.cwd(self.groupName)
         x = open(file,"wb")
         self.ftp.retrbinary("RETR "+file,x.write)
-        x.close()
         self.ftp.close()
+        x.close()
         
     # sends exit message to server, allowing for graceful shutdown
     def timer(self):
@@ -374,7 +382,7 @@ class messenger:
     def shutdown(s,self):
         self.shutdown_flag = True
         self.window_flag = False
-        message = json.dumps({"code":2,"Message":"shutdown request","username":self.username})
+        message = json.dumps({"code":2,"Message":"shutdown request"})
         s.send(message.encode())
         self.top.destroy()
         self.s.shutdown(sock.SHUT_RDWR)
